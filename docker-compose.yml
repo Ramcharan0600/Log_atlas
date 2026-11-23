@@ -1,0 +1,37 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: logmind
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-logmind}
+      POSTGRES_DB: logmind
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U logmind"]
+      interval: 5s
+      retries: 10
+
+  backend:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgresql+psycopg://logmind:${POSTGRES_PASSWORD:-logmind}@db:5432/logmind
+      CORS_ORIGINS: http://localhost:8080,http://localhost:5173
+      LLM_PROVIDER: ${LLM_PROVIDER:-}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_MODEL: ${LLM_MODEL:-}
+      HF_TOKEN: ${HF_TOKEN:-}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-all-MiniLM-L6-v2}
+      MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-50}
+    volumes: [appdata:/app/data]
+    depends_on:
+      db: { condition: service_healthy }
+    ports: ["8000:8000"]
+
+  frontend:
+    build: ./frontend
+    depends_on: [backend]
+    ports: ["8080:80"]
+
+volumes:
+  pgdata: {}
+  appdata: {}

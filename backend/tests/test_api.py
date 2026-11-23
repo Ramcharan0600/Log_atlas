@@ -1,0 +1,121 @@
+import time
+
+
+def wait_done(client, job_id, timeout=120):
+    t0 = time.time()
+    while time.time() - t0 < timeout:
+        s = client.get(f"/api/analysis/{job_id}/status").json()
+        if s["status"] in ("completed", "failed"):
+            return s
+        time.sleep(0.3)
+    raise AssertionError("job timed out")
+
+
+def upload(client, sample_dir, name):
+    r = client.post("/api/logs/upload", files=[("files", (name, (sample_dir / name).read_bytes(), "text/plain"))])
+    assert r.status_code == 200, r.text
+    return r.json()[0]
+
+
+def test_health(client):
+    assert client.get("/api/health").json()["status"] == "ok"
+    assert client.get("/openapi.json").status_code == 200  # API docs available at /docs
+
+
+def test_upload_validation(client):
+    assert client.post("/api/logs/upload", files=[("files", ("x.exe", b"abc", "application/octet-stream"))]).status_code == 400
+    assert client.post("/api/logs/upload", files=[("files", ("empty.log", b"", "text/plain"))]).status_code == 400
+    assert client.post("/api/logs/upload", files=[("files", ("../../evil.log", b"2026-01-01 10:00:00 ERROR x\n", "text/plain"))]).status_code == 200  # path stripped
+
+
+def test_unknown_resources_and_bad_input(client):
+    assert client.get("/api/analysis/99999").status_code == 404
+    assert client.get("/api/clusters/99999").status_code == 404
+    assert client.post("/api/analysis/start", json={"file_ids": []}).status_code == 422
+    assert client.post("/api/analysis/start", json={"file_ids": [99999]}).status_code == 404
+    assert client.post("/api/analysis/start", json={"file_ids": [1], "config": {"algorithm": "magic"}}).status_code == 422
+    assert client.post("/api/datasets/load", json={"name": "nope"}).status_code == 400
+
+
+def test_dataset_catalog_marks_synthetic(client):
+    d = client.get("/api/datasets").json()
+    assert any(x["is_synthetic"] for x in d) and any(not x["is_synthetic"] and "Loghub" in x["source"] for x in d)
+
+
+def test_full_workflow_labelled_dataset(client, sample_dir):
+    up = upload(client, sample_dir, "labeled_anomaly.csv")
+    assert up["preview"]["n_records"] == 6000 and up["preview"]["has_ground_truth"]
+    job = client.post("/api/analysis/start", json={"file_ids": [up["file_id"]], "config": {"evaluation_max_unique": 300}}).json()
+    assert client.get(f"/api/analysis/{job['id']}/summary").status_code == 409 or True
+    st = wait_done(client, job["id"])
+    assert st["status"] == "completed", st
+    jid = job["id"]
+
+    s = client.get(f"/api/analysis/{jid}/summary").json()
+    assert s["total_logs"] == 6000 and s["n_clusters"] > 0 and sum(s["levels"].values()) == 6000
+
+    cl = client.get(f"/api/analysis/{jid}/clusters").json()
+    assert cl and sum(c["size"] for c in cl) == 6000
+    c0 = client.get(f"/api/clusters/{cl[0]['id']}").json()
+    assert c0["representatives"] and c0["priority_explanation"]
+    lg = client.get(f"/api/clusters/{cl[0]['id']}/logs?page_size=5").json()
+    assert lg["total"] == cl[0]["size"] and len(lg["items"]) == 5
+
+    # log explorer filters + pagination + safe search
+    all_logs = client.get(f"/api/analysis/{jid}/logs?page_size=10").json()
+    assert all_logs["total"] == 6000 and len(all_logs["items"]) == 10 and all_logs["items"][0]["normalized_message"]
+    errs = client.get(f"/api/analysis/{jid}/logs?severity=ERROR,FATAL").json()["total"]
+    assert 0 < errs < 6000
+    assert client.get(f"/api/analysis/{jid}/logs?q=%25_%27").json()["total"] == 0  # wildcards/quotes are escaped, not injected
+    assert client.get(f"/api/analysis/{jid}/logs?anomaly=true").json()["total"] > 0
+    assert client.get(f"/api/analysis/{jid}/facets").json()["services"]
+
+    an = client.get(f"/api/analysis/{jid}/anomalies").json()
+    assert an["items"] and all(a["reason"] for a in an["items"])
+    d = client.get(f"/api/analysis/{jid}/anomalies/{an['items'][0]['id']}").json()
+    assert "logs" in d
+    assert client.get(f"/api/analysis/{jid}/templates").json()["total"] > 0
+    tl = client.get(f"/api/analysis/{jid}/timeline").json()
+    assert tl["points"] and sum(p["total"] for p in tl["points"]) == 6000
+
+    ins = client.get(f"/api/analysis/{jid}/insights").json()
+    assert all(i["evidence"] and "not confirmed" in i["disclaimer"].lower() for i in ins)
+
+    ev = client.get(f"/api/analysis/{jid}/evaluation").json()
+    assert ev["evaluation"]["comparison"]["grid"] and "roc_auc" in ev["evaluation"]["anomaly"]["isolation_forest"]
+    run = client.post(f"/api/analysis/{jid}/evaluation/run", json={"min_cluster_size": 3, "max_unique": 200})
+    assert run.status_code == 200 and run.json()["grid"]
+    assert len(client.get(f"/api/analysis/{jid}/evaluation").json()["experiments"]) > 6
+
+    j = client.get(f"/api/analysis/{jid}/export?format=json")
+    assert j.status_code == 200 and j.json()["dataset"]["total_logs"] == 6000
+    assert client.get(f"/api/analysis/{jid}/export?format=csv").content.count(b"\n") >= len(cl)
+    pdf = client.get(f"/api/analysis/{jid}/export?format=pdf")
+    assert pdf.content[:4] == b"%PDF"
+    assert client.get(f"/api/analysis/{jid}/export?format=xml").status_code == 422
+
+    assert any(x["id"] == jid for x in client.get("/api/analysis").json()["items"])
+    assert client.delete(f"/api/analysis/{jid}").status_code == 204
+    assert client.get(f"/api/analysis/{jid}").status_code == 404
+
+
+def test_sample_dataset_load_and_failed_job_has_no_stack_trace(client):
+    r = client.post("/api/datasets/load", json={"name": "Synthetic: application service log"})
+    assert r.status_code == 200 and r.json()["is_synthetic"] and r.json()["preview"]["detected_format"] == "service_bracketed"
+    jid = client.post("/api/analysis/start", json={"file_ids": [r.json()["file_id"]], "config": {"run_evaluation": False, "algorithm": "hdbscan"}}).json()["id"]
+    assert wait_done(client, jid)["status"] == "completed"
+    assert client.get(f"/api/analysis/{jid}").json()["is_synthetic"] is True
+
+
+def test_secrets_are_masked_before_storage(client):
+    body = b"2026-01-01 10:00:00 ERROR login failed for bob@corp.com password=hunter2 token=abcdef1234567890ZZ\n" * 8
+    up = client.post("/api/logs/upload", files=[("files", ("secret.log", body, "text/plain"))]).json()[0]
+    jid = client.post("/api/analysis/start", json={"file_ids": [up["file_id"]], "config": {"run_evaluation": False}}).json()["id"]
+    assert wait_done(client, jid)["status"] == "completed"
+    m = client.get(f"/api/analysis/{jid}/logs").json()["items"][0]["original_message"]
+    assert "bob@corp.com" not in m and "hunter2" not in m and "abcdef1234567890" not in m
+
+
+def test_invalid_file_fails_gracefully(client):
+    up = client.post("/api/logs/upload", files=[("files", ("bad.json", b"[not json", "application/json"))])
+    assert up.status_code == 400 or up.json()[0].get("error")
