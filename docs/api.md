@@ -8,7 +8,9 @@ Interactive docs: `http://localhost:8000/docs` (OpenAPI at `/openapi.json`). All
 | GET | `/datasets` | catalog (real vs synthetic flag, licence, labels) |
 | POST | `/datasets/load` `{name}` | copy/download dataset, returns `file_id` + preview |
 | POST | `/logs/upload` (multipart `files`) | validate + store; returns per-file preview or error |
-| GET | `/files/{file_id}/preview` | parsed preview, format, encoding, timestamp parse rate |
+| GET | `/files/{file_id}/preview` | parsed preview, format, encoding, timestamp parse rate (uses the saved column map for CSV) |
+| GET | `/files/{file_id}/columns` | CSV only: headers, sample rows, suggested field mapping, currently saved mapping |
+| PUT | `/files/{file_id}/column-map` `{mapping}` | CSV only: save which CSV column feeds which log field (`message` required); returns a fresh preview |
 | POST | `/analysis/start` `{file_ids, config}` | start background job (202) |
 | GET | `/analysis` | history (paginated) |
 | GET | `/analysis/{id}` · `/status` | job + progress |

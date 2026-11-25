@@ -31,6 +31,10 @@ class LoadDataset(BaseModel):
     name: str = Field(min_length=1, max_length=120)
 
 
+class ColumnMapping(BaseModel):
+    mapping: dict[str, str | None] = Field(description="log field -> CSV header, e.g. {'timestamp': 'Event Time', 'message': 'Description'}")
+
+
 class ExperimentRequest(BaseModel):
     eps: float = Field(0.0, ge=0, le=2)
     min_samples: int = Field(3, ge=1, le=100)

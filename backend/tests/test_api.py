@@ -119,3 +119,36 @@ def test_secrets_are_masked_before_storage(client):
 def test_invalid_file_fails_gracefully(client):
     up = client.post("/api/logs/upload", files=[("files", ("bad.json", b"[not json", "application/json"))])
     assert up.status_code == 400 or up.json()[0].get("error")
+
+
+CUSTOM_CSV = (b"Event Time,Sev,App Name,Description\n"
+              b"2026-11-01 10:00:01,ERROR,billing,Payment failed for order 1001\n"
+              b"2026-11-01 10:00:02,INFO,auth,Login ok for user 8\n")
+
+
+def test_csv_column_mapping(client):
+    up = client.post("/api/logs/upload", files=[("files", ("custom.csv", CUSTOM_CSV, "text/csv"))]).json()[0]
+    fid = up["file_id"]
+    assert up["preview"]["timestamp_parse_rate"] == 0  # non-standard headers are not understood by default
+
+    info = client.get(f"/api/files/{fid}/columns").json()
+    assert info["headers"] == ["Event Time", "Sev", "App Name", "Description"]
+    assert info["suggested_mapping"]["timestamp"] == "Event Time" and info["suggested_mapping"]["message"] == "Description"
+
+    # message column is mandatory; unknown headers/fields are rejected
+    assert client.put(f"/api/files/{fid}/column-map", json={"mapping": {"timestamp": "Event Time"}}).status_code == 400
+    assert client.put(f"/api/files/{fid}/column-map", json={"mapping": {"message": "Nope"}}).status_code == 400
+    assert client.put(f"/api/files/{fid}/column-map", json={"mapping": {"message": "Description", "bogus": "Sev"}}).status_code == 400
+
+    ok = client.put(f"/api/files/{fid}/column-map", json={"mapping": {"timestamp": "Event Time", "level": "Sev", "service": "App Name", "message": "Description"}})
+    assert ok.status_code == 200
+    rows = ok.json()["preview"]["rows"]
+    assert ok.json()["preview"]["timestamp_parse_rate"] == 1.0
+    assert rows[0]["level"] == "ERROR" and rows[0]["service"] == "billing" and rows[0]["message"] == "Payment failed for order 1001"
+    assert client.get(f"/api/files/{fid}/columns").json()["current_mapping"]["message"] == "Description"
+
+
+def test_column_mapping_rejects_non_csv_and_unknown_file(client):
+    up = client.post("/api/logs/upload", files=[("files", ("a.log", b"2026-01-01 10:00:00 ERROR x\n", "text/plain"))]).json()[0]
+    assert client.get(f"/api/files/{up['file_id']}/columns").status_code == 400
+    assert client.get("/api/files/999999/columns").status_code == 404

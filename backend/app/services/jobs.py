@@ -29,7 +29,7 @@ def parse_files(files: list[dict], mask_spec: str | list[str] | None = None) -> 
     rows: list[ParsedLog] = []
     meta = {"files": [], "invalid_lines": 0, "masking": rules}
     for f in files:
-        res = read_records(f["data"], f["name"])
+        res = read_records(f["data"], f["name"], f.get("column_map"))
         fmt = "structured" if res.structured else detect_format([r.text for r in res.records[:200]])
         labels = f.get("labels")
         if labels is not None and len(labels) != len(res.records):
@@ -51,9 +51,9 @@ def parse_files(files: list[dict], mask_spec: str | list[str] | None = None) -> 
     return rows, meta
 
 
-def preview_file(path: str, name: str, n: int = 20, labels: list | None = None) -> dict:
+def preview_file(path: str, name: str, n: int = 20, labels: list | None = None, column_map: dict | None = None) -> dict:
     data = Path(path).read_bytes()
-    res = read_records(data, name)
+    res = read_records(data, name, column_map)
     fmt = "structured" if res.structured else detect_format([r.text for r in res.records[:200]])
     sample = [parse_record(r, fmt, name) for r in res.records[:500]]
     parsed_ts = sum(1 for p in sample if p.timestamp)
@@ -101,7 +101,7 @@ def run_job(job_id: int) -> None:
             payload = []
             for f in files:
                 labels = json.loads(Path(f.labels_path).read_text()) if f.labels_path and Path(f.labels_path).exists() else None
-                payload.append({"name": f.filename, "data": Path(f.stored_path).read_bytes(), "labels": labels})
+                payload.append({"name": f.filename, "data": Path(f.stored_path).read_bytes(), "labels": labels, "column_map": f.column_map})
             file_objs = {f.file_id: f for f in files}
         _set(job_id, status="running", stage="Parsing logs", progress=0.05, processing_started=datetime.utcnow(), error=None)
         rows, meta = parse_files(payload, cfg.get("mask_rules", st.mask_rules))

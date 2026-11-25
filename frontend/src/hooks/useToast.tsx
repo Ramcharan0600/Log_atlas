@@ -18,7 +18,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       {children}
       <div className="fixed bottom-4 right-4 z-[60] space-y-2 w-[min(92vw,360px)]" role="status" aria-live="polite">
         {items.map((t) => (
-          <div key={t.id} className={`card !p-3 flex gap-2 items-start text-sm shadow-lg ${t.kind === "err" ? "border-crit/60" : "border-accent/60"}`}>
+          <div key={t.id} className={`card !p-3 flex gap-2 items-start text-sm ${t.kind === "err" ? "border-crit/60" : "border-accent/60"}`}>
             {t.kind === "err" ? <XCircle size={16} className="text-crit mt-0.5 shrink-0" /> : <CheckCircle2 size={16} className="text-accent mt-0.5 shrink-0" />}
             <span className="flex-1">{t.text}</span>
             <button aria-label="Dismiss" onClick={() => dismiss(t.id)}><X size={14} className="text-dim" /></button>

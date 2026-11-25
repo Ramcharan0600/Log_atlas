@@ -5,6 +5,7 @@ import { api, errMsg } from "../services/api";
 import { useJob } from "../hooks/useJob";
 import { useApi } from "../hooks/useApi";
 import { useToast } from "../hooks/useToast";
+import ColumnMapper from "../components/ColumnMapper";
 import { Badge, ErrorBox, Hint, PageHeader, Skeleton } from "../components/ui";
 import { DatasetInfo, Job, UploadedItem } from "../types";
 
@@ -80,6 +81,8 @@ export default function UploadPage() {
                 <span className="text-dim">{f.preview?.n_records.toLocaleString()} records</span><span className="text-dim">{f.preview?.invalid_lines} invalid lines</span>
                 <span className="text-dim">timestamps parsed {Math.round((f.preview?.timestamp_parse_rate ?? 0) * 100)}%</span>{f.preview?.has_ground_truth && <span className="text-accent">ground-truth labels ✓</span>}
                 <button className="ml-auto text-dim hover:text-ink" aria-label={`Remove ${f.filename}`} onClick={() => setFiles(files.filter((x) => x !== f))}><X size={14} /></button></div>
+              {f.file_id && f.filename.toLowerCase().endsWith(".csv") && (
+                <ColumnMapper fileId={f.file_id} onApplied={(preview) => setFiles((cur) => cur.map((x) => (x.file_id === f.file_id ? { ...x, preview } : x)))} />)}
               <table className="tbl"><thead><tr><th>Time</th><th>Level</th><th>Service</th><th>Message</th></tr></thead>
                 <tbody>{f.preview?.rows.slice(0, 8).map((p) => <tr key={p.line_no}><td className="mono text-dim whitespace-nowrap">{p.timestamp ?? "—"}</td><td className="mono">{p.level}</td><td className="text-dim">{p.service ?? "—"}</td><td className="mono truncate max-w-md">{p.message}</td></tr>)}</tbody></table>
             </div>))}

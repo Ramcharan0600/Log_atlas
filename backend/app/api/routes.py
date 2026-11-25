@@ -16,8 +16,8 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.database.session import get_db
 from app.models import AnalysisJob, Anomaly, Cluster, Insight, LogEntry, LogTemplate, ModelExperiment, Report, UploadedFile
-from app.pipelines.ingestion.reader import IngestionError, read_records, validate_file
-from app.schemas import ExperimentRequest, LoadDataset, StartAnalysis
+from app.pipelines.ingestion.reader import IngestionError, csv_columns, file_ext, read_records, validate_column_map, validate_file
+from app.schemas import ColumnMapping, ExperimentRequest, LoadDataset, StartAnalysis
 from app.services import datasets as ds
 from app.services import jobs
 from app.services import reports as rep
@@ -156,7 +156,43 @@ def file_preview(file_id: int, n: int = Query(20, ge=1, le=200), db: Session = D
     f = db.get(UploadedFile, file_id)
     if not f:
         raise HTTPException(404, "File not found")
-    return {"file_id": f.file_id, "dataset_name": f.dataset_name, "is_synthetic": f.is_synthetic, **jobs.preview_file(f.stored_path, f.filename, n, [1] if f.labels_path else None)}
+    return {"file_id": f.file_id, "dataset_name": f.dataset_name, "is_synthetic": f.is_synthetic, "column_map": f.column_map,
+            **jobs.preview_file(f.stored_path, f.filename, n, [1] if f.labels_path else None, f.column_map)}
+
+
+def _csv_file(db: Session, file_id: int) -> UploadedFile:
+    f = db.get(UploadedFile, file_id)
+    if not f:
+        raise HTTPException(404, "File not found")
+    if file_ext(f.filename) != "csv":
+        raise HTTPException(400, "Column mapping is only available for CSV files")
+    return f
+
+
+@router.get("/files/{file_id}/columns")
+def file_columns(file_id: int, db: Session = Depends(get_db)):
+    """CSV headers, sample rows, the auto-suggested mapping and the mapping currently saved for this file."""
+    f = _csv_file(db, file_id)
+    try:
+        info = csv_columns(Path(f.stored_path).read_bytes())
+    except IngestionError as e:
+        raise HTTPException(400, str(e)) from e
+    return {"file_id": f.file_id, "current_mapping": f.column_map, **info}
+
+
+@router.put("/files/{file_id}/column-map")
+def set_column_map(file_id: int, body: ColumnMapping, db: Session = Depends(get_db)):
+    """Save which CSV column feeds which log field; returns a fresh preview parsed with that mapping."""
+    f = _csv_file(db, file_id)
+    try:
+        headers = csv_columns(Path(f.stored_path).read_bytes())["headers"]
+        f.column_map = validate_column_map(body.mapping, headers)
+        db.commit()
+        prev = jobs.preview_file(f.stored_path, f.filename, 20, [1] if f.labels_path else None, f.column_map)
+    except IngestionError as e:
+        db.rollback()
+        raise HTTPException(400, str(e)) from e
+    return {"file_id": f.file_id, "column_map": f.column_map, "preview": prev}
 
 
 # ---------- analysis jobs -------------------------------------------------------------------------

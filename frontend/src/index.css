@@ -2,38 +2,45 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Graphite + signal lime. Light theme is warm paper with an olive accent. */
 :root, [data-theme="dark"] {
-  --bg: 232 32% 7%; --panel: 232 26% 11%; --line: 232 18% 19%; --ink: 220 25% 94%; --dim: 225 14% 64%;
-  --accent: 252 90% 70%; --accent2: 186 85% 52%; --crit: 351 90% 63%; --high: 24 96% 60%; --med: 45 96% 58%; --low: 205 85% 62%;
-  --glow: 252 90% 60%;
+  --bg: 40 6% 7%; --panel: 40 5% 10.5%; --line: 40 5% 19%; --ink: 40 18% 92%; --dim: 40 6% 60%;
+  --accent: 76 88% 56%; --on-accent: 70 40% 7%; --accent2: 186 50% 58%;
+  --crit: 355 82% 62%; --high: 23 94% 58%; --med: 44 92% 56%; --low: 202 78% 62%;
   color-scheme: dark;
 }
 [data-theme="light"] {
-  --bg: 230 40% 97%; --panel: 0 0% 100%; --line: 228 25% 89%; --ink: 232 35% 14%; --dim: 228 12% 42%;
-  --accent: 252 75% 55%; --accent2: 190 90% 34%; --crit: 351 78% 48%; --high: 22 88% 44%; --med: 40 92% 38%; --low: 205 80% 40%;
-  --glow: 252 90% 75%;
+  --bg: 42 24% 94%; --panel: 42 30% 97.5%; --line: 40 14% 81%; --ink: 40 22% 9%; --dim: 40 8% 38%;
+  --accent: 82 78% 27%; --on-accent: 45 40% 96%; --accent2: 190 70% 27%;
+  --crit: 353 72% 44%; --high: 20 85% 40%; --med: 38 90% 34%; --low: 205 78% 36%;
   color-scheme: light;
 }
 html { scroll-behavior: smooth; }
-body {
-  @apply bg-bg text-ink font-sans antialiased;
-  background-image: radial-gradient(900px 420px at 85% -8%, hsl(var(--glow) / 0.14), transparent 60%), radial-gradient(700px 360px at -5% 105%, hsl(var(--accent2) / 0.08), transparent 60%);
-  background-attachment: fixed;
-}
-::selection { background: hsl(var(--accent) / 0.35); }
+body { @apply bg-bg text-ink font-sans antialiased; font-feature-settings: "ss01", "tnum"; }
+h1, h2, h3 { @apply font-display; }
+::selection { background: hsl(var(--accent)); color: hsl(var(--on-accent)); }
+:focus-visible { outline: 2px solid hsl(var(--accent)); outline-offset: 2px; }
+::-webkit-scrollbar { width: 10px; height: 10px; } ::-webkit-scrollbar-thumb { background: hsl(var(--line)); border-radius: 0; } ::-webkit-scrollbar-track { background: transparent; }
+
 @layer components {
-  .card { @apply bg-panel/90 border border-line rounded-xl p-4 shadow-[0_1px_0_0_hsl(0_0%_100%/0.03)_inset,0_8px_24px_-12px_rgba(0,0,0,0.35)] transition-colors; }
-  .card-hover { @apply hover:border-accent/50; }
-  .h-title { @apply text-[11px] uppercase tracking-[0.14em] text-dim mb-3 font-semibold; }
-  .btn { @apply inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98]; }
-  .btn-primary { @apply btn bg-accent text-white shadow-lg shadow-accent/25 hover:brightness-110; }
-  .btn-ghost { @apply btn border border-line text-ink hover:bg-line/60 hover:border-accent/40; }
-  .input { @apply bg-bg/70 border border-line rounded-lg px-3 py-2 text-sm text-ink placeholder:text-dim focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/25 transition; }
+  .card { @apply bg-panel border border-line rounded-lg p-4; }
+  .card-hover { @apply transition-colors hover:border-ink/40; }
+  .h-title { @apply font-mono text-[10.5px] uppercase tracking-[0.12em] text-dim mb-3 font-medium; }
+  .card > .h-title:first-child { @apply pb-2.5 border-b border-line; }
+  .btn { @apply inline-flex items-center gap-2 px-3.5 py-2 rounded-md text-sm font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed; }
+  .btn-primary { @apply btn bg-accent text-on-accent hover:bg-accent/85; }
+  .btn-ghost { @apply btn border border-line text-ink hover:border-ink; }
+  .input { @apply bg-panel border border-line rounded-md px-3 py-2 text-sm text-ink placeholder:text-dim focus:outline-none focus:border-accent transition-colors; }
+  /* native dropdown lists and date pickers must follow the theme, otherwise light text lands on a white popup */
+  select.input { color-scheme: inherit; }
+  select.input option, select.input optgroup { background-color: hsl(var(--panel)); color: hsl(var(--ink)); }
+  select.input option:checked { background-color: hsl(var(--accent)); color: hsl(var(--on-accent)); }
+  input[type="datetime-local"].input, input[type="date"].input { color-scheme: inherit; }
+  [data-theme="dark"] input[type="datetime-local"]::-webkit-calendar-picker-indicator, [data-theme="dark"] input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.85); }
   .tbl { @apply w-full text-sm; }
-  .tbl th { @apply text-left text-[11px] uppercase tracking-wider text-dim font-semibold py-2.5 px-2 border-b border-line; }
-  .tbl td { @apply py-2.5 px-2 border-b border-line/50 align-top; }
-  .tbl tbody tr { @apply transition-colors hover:bg-accent/[0.06]; }
+  .tbl th { @apply text-left font-mono text-[10.5px] uppercase tracking-[0.1em] text-dim font-medium py-2 px-2 border-b border-ink/30; }
+  .tbl td { @apply py-2.5 px-2 border-b border-line align-top; }
+  .tbl tbody tr { @apply transition-colors hover:bg-ink/[0.045]; }
   .mono { @apply font-mono text-xs; }
-  .skeleton { @apply animate-pulse bg-line/60 rounded-lg; }
-  .gradient-text { @apply bg-clip-text text-transparent; background-image: linear-gradient(90deg, hsl(var(--accent)), hsl(var(--accent2))); }
+  .skeleton { @apply animate-pulse bg-line/70 rounded-md; }
 }

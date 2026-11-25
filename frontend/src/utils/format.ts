@@ -4,7 +4,7 @@ export const fmtNum = (n?: number | null, d = 3) => (n == null || Number.isNaN(n
 export const pct = (n?: number | null) => (n == null ? "—" : `${(n * 100).toFixed(1)}%`);
 export const cx = (...a: (string | false | null | undefined)[]) => a.filter(Boolean).join(" ");
 
-export const SEV_COLORS: Record<string, string> = { FATAL: "hsl(350 85% 60%)", ERROR: "hsl(25 95% 58%)", WARN: "hsl(45 95% 55%)", INFO: "hsl(200 70% 55%)", DEBUG: "hsl(215 12% 50%)", UNKNOWN: "hsl(215 12% 38%)" };
+export const SEV_COLORS: Record<string, string> = { FATAL: "hsl(var(--crit))", ERROR: "hsl(var(--high))", WARN: "hsl(var(--med))", INFO: "hsl(var(--low))", DEBUG: "hsl(var(--dim))", UNKNOWN: "hsl(var(--line))" };
 export const KIND_LABEL: Record<string, string> = {
   isolation_forest: "Isolation Forest outlier", new_pattern: "New error pattern", cluster_spike: "Cluster volume spike", severity_shift: "Error-ratio shift",
   rare_template: "Rare error template", component: "Abnormal component", frequency_spike_1min: "Error spike (1 min)", frequency_spike_5min: "Error spike (5 min)", frequency_spike_1h: "Error spike (1 h)",

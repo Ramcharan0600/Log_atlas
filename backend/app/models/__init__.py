@@ -31,6 +31,7 @@ class UploadedFile(Base):
     dataset_name: Mapped[str | None] = mapped_column(String(120))
     is_synthetic: Mapped[bool] = mapped_column(Boolean, default=False)
     labels_path: Mapped[str | None] = mapped_column(String(600))  # sidecar ground-truth labels
+    column_map: Mapped[dict | None] = mapped_column(JSON)  # CSV only: log field -> CSV header chosen by the user
     uploaded_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
 

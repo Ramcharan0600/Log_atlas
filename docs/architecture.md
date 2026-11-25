@@ -3,6 +3,7 @@
 ```
 LOG INPUT (TXT/LOG/CSV/JSON/JSONL, bundled demos, Loghub downloads)
   → INGESTION     pipelines/ingestion/reader.py     size/type validation, encoding detection, invalid-line counting, multiline merge
+  → COLUMN MAP    (CSV only) user-chosen header -> field mapping stored on uploaded_files.column_map, applied in the reader
   → PARSING       pipelines/parsing/parser.py       pluggable regex formats (Apache/Nginx, Python, Java, syslog, HDFS, BGL, HealthApp, bracketed service, structured CSV/JSON)
   → MASKING       pipelines/preprocessing           emails, phones, tokens, passwords, API keys (opt. IPs, identifiers) BEFORE storage
   → NORMALIZATION pipelines/preprocessing/normalizer.py   <IP> <UUID> <TIME> <PATH> <ID> <NUM> ... (configurable)
@@ -28,4 +29,4 @@ LOG INPUT (TXT/LOG/CSV/JSON/JSONL, bundled demos, Loghub downloads)
 - **Security**: filename sanitising, extension/size limits, masking before storage, escaped LIKE search, generic 500 responses (stack traces only in server logs), in-memory rate limit, secrets only from environment, React text rendering (no HTML injection).
 
 ## Database
-Tables: `users` (reserved), `uploaded_files`, `analysis_jobs`, `logs`, `log_templates`, `clusters`, `anomalies`, `insights`, `reports`, `model_experiments`; indexes on (job, cluster/severity/timestamp/service). Migration `0001_initial_schema`. SQLite uses `create_all`; PostgreSQL uses `alembic upgrade head`.
+Tables: `users` (reserved), `uploaded_files`, `analysis_jobs`, `logs`, `log_templates`, `clusters`, `anomalies`, `insights`, `reports`, `model_experiments`; indexes on (job, cluster/severity/timestamp/service). Migrations: `0001_initial_schema`, `0002_uploaded_files_column_map` (per-file CSV column mapping). SQLite uses `create_all`; PostgreSQL uses `alembic upgrade head`.

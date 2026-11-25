@@ -54,4 +54,8 @@ export type Preview = {
   filename: string; encoding: string; detected_format: string; n_records: number; invalid_lines: number; timestamp_parse_rate: number;
   level_distribution_sample: Record<string, number>; has_ground_truth: boolean; rows: { line_no: number; timestamp?: string | null; level: string; service?: string | null; message: string }[];
 };
+export type ColumnInfo = {
+  file_id: number; headers: string[]; sample_rows: Record<string, string>[]; fields: string[];
+  suggested_mapping: Record<string, string>; current_mapping?: Record<string, string> | null;
+};
 export type UploadedItem = { file_id?: number; filename: string; size_bytes?: number; preview?: Preview; error?: string; dataset_name?: string | null; is_synthetic?: boolean };

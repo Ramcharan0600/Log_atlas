@@ -89,7 +89,69 @@ def merge_multiline(lines: list[str]) -> list[RawRecord]:
     return out
 
 
-def read_records(data: bytes, filename: str) -> ReadResult:
+# Log fields a CSV column can be mapped to, with header names that are auto-suggested for each.
+MAPPABLE_FIELDS: dict[str, tuple[str, ...]] = {
+    "timestamp": ("timestamp", "time", "@timestamp", "date", "datetime", "event time", "event_time", "created_at", "logged_at"),
+    "level": ("level", "severity", "loglevel", "log_level", "levelname", "priority"),
+    "service": ("service", "app", "application", "service_name", "source", "system"),
+    "component": ("component", "logger", "module", "class"),
+    "host": ("host", "hostname", "server", "node"),
+    "ip": ("ip", "client_ip", "remote_addr", "ip_address"),
+    "pid": ("pid", "process_id", "process"),
+    "thread": ("thread", "thread_id"),
+    "request_id": ("request_id", "trace_id", "req_id", "correlation_id"),
+    "error_code": ("error_code", "status", "code", "status_code"),
+    "message": ("message", "msg", "log", "text", "content", "event", "description", "details"),
+    "label": ("label", "anomaly", "is_anomaly", "anomaly_label"),
+}
+
+
+def csv_columns(data: bytes, sample: int = 5) -> dict:
+    """Header names, a few sample rows and a suggested field mapping for a CSV file."""
+    text, _ = decode(data)
+    reader = csv.DictReader(io.StringIO(text))
+    if not reader.fieldnames:
+        raise IngestionError("CSV has no header row")
+    headers = [h for h in reader.fieldnames if h is not None]
+    rows = []
+    for row in reader:
+        rows.append({h: (row.get(h) or "")[:200] for h in headers})
+        if len(rows) >= sample:
+            break
+    lower = {h.strip().lower(): h for h in headers}
+    suggested = {}
+    for target, names in MAPPABLE_FIELDS.items():
+        hit = next((lower[n] for n in names if n in lower), None)
+        if hit and hit not in suggested.values():
+            suggested[target] = hit
+    return {"headers": headers, "sample_rows": rows, "suggested_mapping": suggested, "fields": list(MAPPABLE_FIELDS)}
+
+
+def validate_column_map(mapping: dict, headers: list[str]) -> dict:
+    """Keep only known fields mapped to existing, non-empty headers; a message column is mandatory."""
+    clean = {}
+    for target, header in (mapping or {}).items():
+        if target not in MAPPABLE_FIELDS:
+            raise IngestionError(f"Unknown field '{target}'")
+        if header in (None, ""):
+            continue
+        if header not in headers:
+            raise IngestionError(f"Column '{header}' not found in the CSV")
+        clean[target] = header
+    if "message" not in clean:
+        raise IngestionError("Map a CSV column to 'message': it is the text that gets clustered")
+    return clean
+
+
+def _apply_map(row: dict, column_map: dict) -> dict:
+    out = dict(row)
+    for target, header in column_map.items():
+        if header in row:
+            out[target] = row[header]
+    return out
+
+
+def read_records(data: bytes, filename: str, column_map: dict | None = None) -> ReadResult:
     text, enc = decode(data)
     ext = file_ext(filename)
     res = ReadResult(encoding=enc)
@@ -102,6 +164,8 @@ def read_records(data: bytes, filename: str) -> ReadResult:
             if not any((v or "").strip() for v in row.values() if isinstance(v, str)):
                 continue
             row = {k: v for k, v in row.items() if k is not None}
+            if column_map:
+                row = _apply_map(row, column_map)
             res.records.append(_from_obj(i, row))
     elif ext in ("json", "jsonl"):
         res.structured = True
