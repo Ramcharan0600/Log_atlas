@@ -250,7 +250,7 @@ def build():
                   ("Evaluation", "Supervised and unsupervised metrics, configuration grid, runtime and memory.", "pipelines/evaluation"),
                   ("Storage and API", "SQLAlchemy models, Alembic migrations, FastAPI routes feeding the dashboard and reports.", "models, api/routes.py")]),
               H2("2.3 Key design decisions"),
-              *bullets(["Python backend, because the ML stack (scikit-learn, Drain3, sentence-transformers) lives there. The earlier Node prototype is retired.",
+              *bullets(["Python backend, because the ML stack (scikit-learn, Drain3, sentence-transformers) lives there. The earlier Node prototype has been removed.",
                         "Clustering runs on unique normalized messages (frequency-weighted for DBSCAN and K-Means). Logs are very repetitive, so this is the main scalability lever; about 10 to 14 thousand logs per second were measured on synthetic data.",
                         "Both feature types produce dense L2-normalised vectors, so cosine and euclidean distance agree and one clustering code path serves both.",
                         "Algorithm noise is reported (raw noise ratio) and then re-attached to the log's Drain template group so every log has a cluster. Evaluation reports both views.",
@@ -529,7 +529,6 @@ backend/{tests,migrations,scripts,sample_data}
 frontend/src/{components,pages,layouts,charts,services,hooks,types,utils}
 docs/   architecture, methodology, dataset, API, testing, deployment,
         experiments, images, this PDF
-_legacy_mern/   earlier Node/Express prototype (unused, safe to delete)
 """),
               P("To regenerate this document after changes: python backend/scripts/build_docs_pdf.py", "small")]
 

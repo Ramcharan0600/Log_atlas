@@ -2,6 +2,7 @@
 from functools import lru_cache
 from pathlib import Path
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BASE_DIR = Path(__file__).resolve().parents[2]
@@ -29,6 +30,16 @@ class Settings(BaseSettings):
     llm_api_key: str = ""
     llm_model: str = ""
     log_level: str = "INFO"
+
+    @field_validator("database_url")
+    @classmethod
+    def _driver(cls, v: str) -> str:
+        """Hosts such as Render/Heroku hand out postgres:// or postgresql://; SQLAlchemy would then look for psycopg2, which is not installed."""
+        v = v.strip()
+        for prefix in ("postgres://", "postgresql://"):
+            if v.startswith(prefix):
+                return "postgresql+psycopg://" + v[len(prefix):]
+        return v
 
     @property
     def cors_list(self) -> list[str]:

@@ -1,5 +1,13 @@
 # Deployment & troubleshooting
 
+**Demo on Render + Vercel (free tiers)**
+1. Push the repo to GitHub.
+2. Render: *New, Blueprint*, choose the repo. `render.yaml` creates the PostgreSQL database (`atlas-db`) and the API (`atlas-api`). The API runs `alembic upgrade head` on start, and the app converts Render's `postgresql://` URL to the `postgresql+psycopg://` form automatically. Open `https://<service>.onrender.com/api/health` to confirm.
+3. Vercel: *Add New, Project*, same repo, Root Directory `frontend`, environment variable `VITE_API_URL=https://<service>.onrender.com` (no trailing slash, no `/api`). Deploy.
+4. Back on Render, set `CORS_ORIGINS` on `atlas-api` to the exact Vercel URL (no trailing slash) and let it redeploy.
+5. To inspect the hosted data, register a server in pgAdmin with the database's *External* connection details from Render.
+Demo limits: embeddings are off (512 MB RAM), the free API sleeps after 15 idle minutes (first request takes about a minute), uploaded files live on an ephemeral disk and disappear on redeploy (add a paid persistent disk at `/app/data` to keep them), the free database expires after 30 days, and there is no login, so everyone sees every analysis.
+
 **Docker Compose** (`docker-compose.yml`): `db` (PostgreSQL 16), `backend` (runs `alembic upgrade head`, then uvicorn), `frontend` (nginx serving the build and proxying `/api` to the backend). Set `POSTGRES_PASSWORD`, `CORS_ORIGINS`, optional LLM variables in `.env`. The Docker build was not executed in the authoring environment; run `docker compose up --build` and report issues.
 
 **Split hosting**

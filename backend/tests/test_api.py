@@ -152,3 +152,11 @@ def test_column_mapping_rejects_non_csv_and_unknown_file(client):
     up = client.post("/api/logs/upload", files=[("files", ("a.log", b"2026-01-01 10:00:00 ERROR x\n", "text/plain"))]).json()[0]
     assert client.get(f"/api/files/{up['file_id']}/columns").status_code == 400
     assert client.get("/api/files/999999/columns").status_code == 404
+
+
+def test_database_url_driver_is_normalised():
+    from app.core.config import Settings
+    assert Settings(database_url="postgres://u:p@h/db").database_url == "postgresql+psycopg://u:p@h/db"
+    assert Settings(database_url="postgresql://u:p@h/db").database_url == "postgresql+psycopg://u:p@h/db"
+    assert Settings(database_url="postgresql+psycopg://u:p@h/db").database_url == "postgresql+psycopg://u:p@h/db"
+    assert Settings(database_url="sqlite:///x.db").database_url == "sqlite:///x.db"

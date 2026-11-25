@@ -124,6 +124,16 @@ docker compose up --build        # UI http://localhost:8080, API http://localhos
 
 The backend container runs `alembic upgrade head` before starting. The Docker build has not been exercised in the authoring environment, so please report any problems.
 
+## Deploy a demo (Render and Vercel)
+
+`render.yaml` creates the PostgreSQL database and the API on Render in one step; the frontend goes on Vercel. Short version:
+
+1. Render: **New, Blueprint**, pick this repo. Wait for `atlas-api` to go live and check `https://<service>.onrender.com/api/health`.
+2. Vercel: import the repo, set **Root Directory** to `frontend`, add `VITE_API_URL=https://<service>.onrender.com` (no trailing slash, no `/api`), deploy.
+3. Render: set `CORS_ORIGINS` on `atlas-api` to your exact Vercel URL.
+
+Free-tier limits and the pgAdmin hookup for the hosted database are in [`docs/deployment.md`](docs/deployment.md). There is no login yet, so a public demo shows every analysis to every visitor.
+
 ## Configuration
 
 Set in `.env` (backend reads `../.env` or `backend/.env`). See `.env.example`.
@@ -168,8 +178,6 @@ backend/{tests,migrations,scripts,sample_data}
 frontend/src/{components,pages,layouts,charts,services,hooks,types,utils}
 docs/            architecture, methodology, dataset, API, testing, deployment, experiments, PDF
 ```
-
-`_legacy_mern/` holds the earlier Node and Express prototype. It is unused and can be deleted.
 
 ## Tests
 
