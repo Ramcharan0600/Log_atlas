@@ -2,7 +2,7 @@
 
 **Demo on Render + Vercel (free tiers)**
 1. Push the repo to GitHub.
-2. Render: *New, Blueprint*, choose the repo. `render.yaml` creates the PostgreSQL database (`atlas-db`) and the API (`atlas-api`). The API runs `alembic upgrade head` on start, and the app converts Render's `postgresql://` URL to the `postgresql+psycopg://` form automatically. Open `https://<service>.onrender.com/api/health` to confirm.
+2. Render: *New, Blueprint*, choose the repo. `render.yaml` creates the API (`atlas-api`); create the free PostgreSQL database in the dashboard first and paste its URL when the blueprint asks for DATABASE_URL. The API runs `alembic upgrade head` on start, and the app converts Render's `postgresql://` URL to the `postgresql+psycopg://` form automatically. Open `https://<service>.onrender.com/api/health` to confirm.
 3. Vercel: *Add New, Project*, same repo, Root Directory `frontend`, environment variable `VITE_API_URL=https://<service>.onrender.com` (no trailing slash, no `/api`). Deploy.
 4. Back on Render, set `CORS_ORIGINS` on `atlas-api` to the exact Vercel URL (no trailing slash) and let it redeploy.
 5. To inspect the hosted data, register a server in pgAdmin with the database's *External* connection details from Render.

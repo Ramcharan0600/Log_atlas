@@ -126,7 +126,7 @@ The backend container runs `alembic upgrade head` before starting. The Docker bu
 
 ## Deploy a demo (Render and Vercel)
 
-`render.yaml` creates the PostgreSQL database and the API on Render in one step; the frontend goes on Vercel. Short version:
+`render.yaml` creates the API on Render (you create the free PostgreSQL database in the dashboard and paste its URL as `DATABASE_URL`); the frontend goes on Vercel. Short version:
 
 1. Render: **New, Blueprint**, pick this repo. Wait for `atlas-api` to go live and check `https://<service>.onrender.com/api/health`.
 2. Vercel: import the repo, set **Root Directory** to `frontend`, add `VITE_API_URL=https://<service>.onrender.com` (no trailing slash, no `/api`), deploy.

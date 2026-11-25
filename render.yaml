@@ -1,27 +1,19 @@
-# Render Blueprint: creates the PostgreSQL database and the API in one step.
+# Render Blueprint: creates the API. The PostgreSQL database is created separately in the Render dashboard
+# (the free plan allows one free database per workspace), and its URL is pasted in as DATABASE_URL.
 # Render dashboard -> New -> Blueprint -> pick this repo. The frontend is deployed separately on Vercel (see docs/deployment.md).
 # Free plans are for demos: the database expires after 30 days and the API sleeps when idle.
-databases:
-  - name: atlas-db
-    databaseName: atlas
-    user: atlas
-    plan: free
-    region: oregon
-
 services:
   - type: web
     name: atlas-api
     runtime: docker
-    region: oregon            # keep the same region as the database so the internal connection string works
+    region: oregon            # if you use the Internal Database URL, this must match the database's region
     plan: free
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
     healthCheckPath: /api/health
     envVars:
-      - key: DATABASE_URL     # postgres:// is rewritten to postgresql+psycopg:// by the app
-        fromDatabase:
-          name: atlas-db
-          property: connectionString
+      - key: DATABASE_URL     # paste the database's External (or Internal) URL; postgres:// is rewritten to postgresql+psycopg:// by the app
+        sync: false
       - key: CORS_ORIGINS     # set to your Vercel URL (no trailing slash) after the frontend is deployed
         sync: false
       - key: EMBEDDINGS_ENABLED
