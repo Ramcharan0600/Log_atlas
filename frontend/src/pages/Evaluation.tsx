@@ -3,7 +3,7 @@ import { useApi } from "../hooks/useApi";
 import { useJob } from "../hooks/useJob";
 import { useToast } from "../hooks/useToast";
 import { api, errMsg } from "../services/api";
-import { Async, Empty, ErrorBox, Hint, NeedJob, PageHeader, SyntheticBanner } from "../components/ui";
+import { Async, Empty, ErrorBox, Hint, NeedJob, Notice, PageHeader, SyntheticBanner } from "../components/ui";
 import { MetricBars } from "../charts/Charts";
 import { fmtNum } from "../utils/format";
 import { Evaluation, GridRow } from "../types";
@@ -32,7 +32,7 @@ export default function EvaluationPage() {
           return (
             <div className="space-y-6">
               {d.is_synthetic && <SyntheticBanner />}
-              {ev.comparison?.warning && <ErrorBox msg={ev.comparison.warning} />}
+              {ev.comparison?.warning && <Notice msg={ev.comparison.warning} />}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="card"><div className="h-title !mb-1">Features used</div><div className="mono">{ev.feature_backend}</div></div>
                 <div className="card"><div className="h-title !mb-1">Pipeline throughput</div><div className="text-xl font-semibold">{fmtNum(ev.logs_per_second)} logs/s</div><div className="text-xs text-dim">{ev.total_seconds}s total incl. evaluation</div></div>

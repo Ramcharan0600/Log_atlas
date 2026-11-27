@@ -4,6 +4,7 @@ import { ChevronRight, Moon, Search, Sun } from "lucide-react";
 import { useJob } from "../hooks/useJob";
 import { useTheme } from "../hooks/useTheme";
 import { NAV } from "./nav";
+import { Notice } from "../components/ui";
 
 function Breadcrumbs() {
   const { pathname } = useLocation();
@@ -25,7 +26,7 @@ const Mark = () => (
 );
 
 export default function AppLayout() {
-  const { jobs, jobId, setJobId } = useJob();
+  const { jobs, jobId, setJobId, connError } = useJob();
   const { theme, toggle } = useTheme();
   const nav = useNavigate();
   const [q, setQ] = useState("");
@@ -60,7 +61,7 @@ export default function AppLayout() {
           </form>
           <button className="btn-ghost !p-1.5" onClick={toggle} aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} theme`} title="Toggle theme">{theme === "dark" ? <Sun size={15} /> : <Moon size={15} />}</button>
         </header>
-        <main className="flex-1 p-4 md:p-8 min-w-0 max-w-[1500px] w-full mx-auto"><Outlet /></main>
+        <main className="flex-1 p-4 md:p-8 min-w-0 max-w-[1500px] w-full mx-auto">{connError && <div className="mb-4"><Notice msg={`${connError} Retrying…`} /></div>}<Outlet /></main>
       </div>
     </div>
   );

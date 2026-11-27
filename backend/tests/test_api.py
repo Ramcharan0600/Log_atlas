@@ -22,6 +22,25 @@ def test_health(client):
     assert client.get("/openapi.json").status_code == 200  # API docs available at /docs
 
 
+def test_rate_limit_reply_keeps_cors_headers():
+    from fastapi.testclient import TestClient
+
+    from app.core.ratelimit import RateLimitMiddleware
+    from app.main import app
+
+    # rebuild the app's middleware stack with a limit of 1 (tests otherwise run with the limit disabled)
+    mw = next(m for m in app.user_middleware if m.cls is RateLimitMiddleware)
+    original, mw.kwargs["per_minute"], app.middleware_stack = mw.kwargs["per_minute"], 1, None
+    try:
+        c = TestClient(app)
+        headers = {"Origin": "http://localhost:5173"}
+        first, second = c.get("/api/missing", headers=headers), c.get("/api/missing", headers=headers)
+        assert (first.status_code, second.status_code) == (404, 429)
+        assert second.headers["access-control-allow-origin"] == "http://localhost:5173"
+    finally:
+        mw.kwargs["per_minute"], app.middleware_stack = original, None
+
+
 def test_upload_validation(client):
     assert client.post("/api/logs/upload", files=[("files", ("x.exe", b"abc", "application/octet-stream"))]).status_code == 400
     assert client.post("/api/logs/upload", files=[("files", ("empty.log", b"", "text/plain"))]).status_code == 400

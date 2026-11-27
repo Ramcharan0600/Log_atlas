@@ -29,8 +29,9 @@ async def lifespan(_: FastAPI):
 
 app = FastAPI(title="Atlas", version="1.0.0", lifespan=lifespan,
               description="Server log error clustering, anomaly detection and evidence-based root-cause insights.")
-app.add_middleware(CORSMiddleware, allow_origins=settings.cors_list, allow_methods=["*"], allow_headers=["*"], expose_headers=["Content-Disposition"])
 app.add_middleware(RateLimitMiddleware, per_minute=settings.rate_limit_per_minute)
+# added last = outermost, so rate-limit (429) replies also carry CORS headers and the browser can show the real message
+app.add_middleware(CORSMiddleware, allow_origins=settings.cors_list, allow_methods=["*"], allow_headers=["*"], expose_headers=["Content-Disposition"])
 app.include_router(router)
 
 

@@ -48,7 +48,11 @@ export const PageSkeleton = () => (
 export const ErrorBox = ({ msg, retry }: { msg: string; retry?: () => void }) => (
   <div className="card border-crit/50 text-crit text-sm flex items-center gap-3" role="alert"><AlertTriangle size={16} /><span className="flex-1">{msg}</span>{retry && <button className="btn-ghost !py-1" onClick={retry}>Retry</button>}</div>
 );
-export const Empty = ({ title, text, action }: { title: string; text?: string; action?: ReactNode }) => (
+/** Something worth knowing that is not a failure. */
+export const Notice = ({ msg }: { msg: string }) => (
+  <div className="card !py-2 border-med/50 text-med text-sm flex items-center gap-3" role="status"><Info size={16} className="shrink-0" /><span className="flex-1">{msg}</span></div>
+);
+export const Empty =({ title, text, action }: { title: string; text?: string; action?: ReactNode }) => (
   <div className="card text-center py-14 border-dashed"><div className="mx-auto mb-3 w-12 h-12 rounded-2xl bg-accent/10 text-accent grid place-items-center"><Inbox size={22} /></div><div className="font-display font-bold text-lg">{title}</div>{text && <p className="text-dim text-sm mt-1">{text}</p>}{action && <div className="mt-4">{action}</div>}</div>
 );
 export const SyntheticBanner = () => (
@@ -61,8 +65,10 @@ export const EvidenceTag = ({ t }: { t: string }) => {
 
 /** Renders children only when a completed analysis is selected; otherwise a helpful empty/progress state. */
 export function NeedJob({ children }: { children: ReactNode }) {
-  const { jobId, job, loaded } = useJob();
+  const { jobId, job, loaded, connError } = useJob();
   if (!loaded) return <PageSkeleton />;
+  // the list never arrived: do not claim there are no analyses (the layout shows why)
+  if (connError && !job) return <PageSkeleton />;
   if (!jobId || !job) return <Empty title="No completed analysis yet" text="Upload a log file or load a dataset to get started." action={<Link to="/upload" className="btn-primary">Upload & analyze</Link>} />;
   if (job.status === "failed") return <ErrorBox msg={`Analysis #${job.id} failed: ${job.error || "unknown error"}`} />;
   if (job.status !== "completed")
